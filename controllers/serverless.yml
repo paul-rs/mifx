@@ -1,0 +1,93 @@
+service: calculation-controller
+provider:
+  name: aws
+  runtime: python3.6
+  memorySize: 128
+  timeout: 300
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ecs:RunTask
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - iam:PassRole
+      Resource:
+        - 'Fn::Join':
+          - ':'
+          -
+            - 'arn:aws:iam:'
+            - Ref: 'AWS::AccountId'
+            - 'role/ecsTaskExecutionRole'
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource: 
+        - arn:aws:s3:::${self:custom.request_bucket}/*
+        - arn:aws:s3:::${self:custom.response_bucket}/*
+    - Effect: Allow
+      Action:
+        - kinesis:GetRecords
+        - kinesis:GetShardIterator
+        - kinesis:PutRecord
+        - kinesis:PutRecords
+        - kinesis:DescribeStream
+        - kinesis:ListStreams
+      Resource: 
+        - 'Fn::Join':
+          - ':'
+          -
+            - 'arn:aws:kinesis'
+            - Ref: 'AWS::Region'
+            - Ref: 'AWS::AccountId'
+            - 'stream/${self:custom.input_stream}'
+        - 'Fn::Join':
+          - ':'
+          -
+            - 'arn:aws:kinesis'
+            - Ref: 'AWS::Region'
+            - Ref: 'AWS::AccountId'
+            - 'stream/${self:custom.output_stream}'
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-southeast-1'}
+
+custom:
+  request_bucket: ${self:provider.stage}-calculation-request
+  response_bucket: ${self:provider.stage}-calculation-response
+  input_stream: ${self:provider.stage}-calculation-requests
+  output_stream: ${self:provider.stage}-calculation-results
+
+functions:
+  process_request:
+    handler: calculation_controller.process_request
+    events:
+      - s3:
+          bucket: ${self:provider.stage}-calculation-request
+          event: s3:ObjectCreated:*
+    environment:
+      INPUT_STREAM: ${self:custom.input_stream}
+      OUTPUT_STREAM: ${self:custom.output_stream}
+      MAX_INSTANCES: "10"
+      PROJECTS_PER_INSTANCE: "200"
+
+  process_response:
+    handler: calculation_controller.process_response
+    events:
+      - s3:
+          bucket: ${self:provider.stage}-calculation-response
+          event: s3:ObjectCreated:*
+
+resources:
+  Resources:
+    CalculationInputs:
+      Type: AWS::Kinesis::Stream
+      Properties:
+        Name: ${self:provider.stage}-calculation-requests
+        ShardCount: 10
+    CalculationResults:
+      Type: AWS::Kinesis::Stream
+      Properties:
+        Name: ${self:provider.stage}-calculation-results
+        ShardCount: 1
+        
