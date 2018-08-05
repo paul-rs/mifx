@@ -7,9 +7,9 @@ import boto3
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-input_stream = os.environ.get('STREAM_NAME', 'dev-calculation-requests')
-output_stream = os.environ.get('STREAM_NAME', 'dev-calculation-results')
-shard_id = os.environ.get('SHARD_ID', 'shardId-000000000000')
+input_stream = os.environ.get('STREAM_NAME')
+output_stream = os.environ.get('STREAM_NAME')
+shard_id = os.environ.get('SHARD_ID')
 region = os.environ.get('AWS_REGION', 'ap-southeast-1')
 kinesis = boto3.client(
     'kinesis',
