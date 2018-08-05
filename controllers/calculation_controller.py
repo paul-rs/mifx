@@ -31,7 +31,11 @@ def process_request(event, context):
     stream = kinesis.describe_stream(StreamName=input_stream)
     shards = stream['StreamDescription']['Shards']
     instance_count = min(
-        [request_data['count'] // projects_per_instance, max_instances])
+        [
+            max([request_data['count'] // projects_per_instance, 1]),
+            max_instances
+        ]
+    )
     projects = request_data['projects']
     hash_keys = []
     results = {'sequence_numbers': [], 'shard_ids': []}
@@ -62,7 +66,7 @@ def process_request(event, context):
     return results
 
 
-def run_calculation(calculation_id, stream_name, shard_id, sequence_number):
+def run_calculation(calculation_id, stream_name, shard_id, seq_num):
     response = ecs.run_task(
         cluster='calculators',
         launchType='FARGATE',
@@ -88,22 +92,10 @@ def run_calculation(calculation_id, stream_name, shard_id, sequence_number):
                 {
                     'name': 'calculator',
                     'environment': [
-                        {
-                            'name': 'SHARD_ID',
-                            'value': shard_id
-                        },
-                        {
-                            'name': 'STREAM_NAME',
-                            'value': stream_name
-                        },
-                        {
-                            'name': 'START_SEQUENCE_ID',
-                            'value': sequence_number
-                        },
-                        {
-                            'name': 'CALCULATION_ID',
-                            'value': calculation_id
-                        }
+                        {'name': 'SHARD_ID', 'value': shard_id},
+                        {'name': 'STREAM_NAME', 'value': stream_name},
+                        {'name': 'START_SEQUENCE_ID', 'value': seq_num},
+                        {'name': 'CALCULATION_ID', 'value': calculation_id}
                     ],
                 },
             ]
