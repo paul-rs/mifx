@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import boto3
 
 
@@ -61,6 +62,9 @@ def calculate_project(project):
         cashflow[year] = str(boe_amount - cost)
 
     project['calculation_id'] = calculation_id
+    # simulate calculation time
+    time.sleep(.250)
+
     return project
 
 
