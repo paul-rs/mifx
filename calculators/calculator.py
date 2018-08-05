@@ -63,7 +63,7 @@ def calculate_project(project):
 
     project['calculation_id'] = calculation_id
     # simulate calculation time
-    time.sleep(.250)
+    time.sleep(.1)
 
     return project
 
